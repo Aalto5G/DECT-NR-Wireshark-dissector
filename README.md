@@ -1,19 +1,20 @@
 # DECT-NR-Wireshark-dissector
-Dissectror of DECR-NR MAC packages for Wireshark 
+Dissectror of DECR-NR+ MAC packages for Wireshark.
 
 
 ## Getting started 
 The following example is tested with Ubuntu 22.04.
 
-For using the code copy the src directory into the 
-~/.local/share/Wireshark/plugins/ directory
+- For using the code copy the src directory into the 
+~/.local/share/Wireshark/plugins/ 
+directory
 
-Start Wireshark.
+- Start Wireshark.
 
-For the demo open in wireshark file ./ExamplePcapng/wireshark_dect_rn_demo.pcapng.
+- For the demo open in wireshark file ./ExamplePcapng/wireshark_dect_rn_demo.pcapng.
 The file contains captured DECT packages.
 
-The example screeshot is int the file ./ExamplePcapng/ExampleScreeshot.png
+The example screeshot is in the file ./ExamplePcapng/ExampleScreeshot.png
 
 ![Alt text](./ExamplePcapng/ExampleScreenshot.png?raw=true "Example screeshot")
 
