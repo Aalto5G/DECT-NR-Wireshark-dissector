@@ -17,6 +17,27 @@ dect_nr_proto = Proto("dect_nr","DECT NR Protocol")
 
 DECT_UDP_PORT = 8091
 
+
+-- Common header
+local f_mac_security = ProtoField.uint8("dect_nr.mac_security", "MAC Security", base.HEX, mac_security, 0x30)
+local f_mac_header_type = ProtoField.uint8("dect_nr.mac_header_type", "MAC Header Type", base.HEX, mac_header_type, 0xf)
+local f_mac_ext = ProtoField.uint8("dect_nr.mac_ext", "MAC Ext", base.HEX, mac_ext, 0xc0)
+
+-- Misc. header fields
+local f_seq_reset = ProtoField.bool("dect_nr.reset", "Reset", 16, nil, 0x1000)
+local f_sequence = ProtoField.uint16("dect_nr.sequence_number", "Sequence Number", base.DEC, nil, 0xFFF)
+local f_network_address = ProtoField.bytes("dect_nr.network_address", "Network address", base.COLON)
+local f_tx_long_rdid = ProtoField.bytes("dect_nr.tx_long_rdid", "Transmitter RDID", base.COLON)
+local f_rx_long_rdid = ProtoField.bytes("dect_nr.rx_long_rdid", "Received RDID", base.COLON)
+
+-- Mux header fields
+local f_mux_ext_field = ProtoField.uint8("dect_nr.sdu.ext_field", "Ext. field", base.HEX, nil, 0xC0)
+local f_mux_ie_type = ProtoField.uint8("dect_nr.sdu.ie_type", "IE Type", base.HEX, ie_type_name, 0x3F)
+local f_mux_sdu_length = ProtoField.uint16("dect_nr.sdu.length", "Length", base.DEC)
+local f_mux_ie_type_ext3 = ProtoField.uint8("dect_nr.sdu.ie_type", "IE Type", base.HEX, ie_type_name_ext3, 0x1F)
+local f_mux_sdu_length_ext3 = ProtoField.uint8("dect_nr.sdu.length", "Length", base.DEC, nil, 0x20)
+
+
 require("ie_network_beacon_msg")
 require("ie_cluster_beacon_msg")
 require("ie_association_request_msg")
@@ -34,6 +55,26 @@ require("ie_resource_allocation")
 require("ie_random_access_resource")
 require("ie_measurement_report")
 require("ie_radio_device_status")
+require("ie_timestamp_nonstd")
+dect_nr_proto.fields = {
+    f_mac_security, 
+    f_mac_header_type, 
+    f_mac_ext,
+    -- Mux header fields
+    f_mux_ext_field,
+    f_mux_ie_type,
+    f_mux_sdu_length,
+    f_mux_ie_type_ext3,
+    f_mux_sdu_length_ext3,
+    -- Miscellaneous header fields
+    f_seq_reset,
+    f_sequence,
+    f_network_address,
+    f_tx_long_rdid,
+    f_rx_long_rdid,
+    -- from ie_timestamp_nonstd
+    f_timestamp_u64
+}
 
 local mac_version = {
     [0] = "v0",
@@ -142,8 +183,9 @@ local ie_type_handler = {
     [0x16] = ie_handler_broadcast_indication,               --Implemented, was unable to find some 3 bit field value list.
     [0x17] = ie_handler_group_assignment,                   --Implemented, for one resource tag
     [0x18] = ie_handler_load_info,                          --Implemented
-    [0x3F] = ie_handler_escape,
-    [0x19] = ie_handler_measurement_report                 --Implemented
+    [0x19] = ie_handler_measurement_report,                 --Implemented
+    [0x1A] = ie_handler_timestamp,
+    [0x3E] = ie_handler_escape,
 }
 
 local ie_type_name = {
@@ -154,8 +196,9 @@ local ie_type_name = {
     [0x4] = "User-plane Data Flow 2 IE",
     [0x5] = "User-plane Data Flow 3 IE",
     [0x6] = "User-plane Data Flow 4 IE",
-    [0x7] = "Network Beacon IE",
-    [0x8] = "Cluster Beacon IE",
+    [0x7] = "Reserved",    
+    [0x8] = "Network Beacon IE", 
+    [0x9] = "Cluster Beacon IE",
     [0xA] = "Association Request Message",
     [0xB] = "Association Response Message",
     [0xC] = "Association Release Message",
@@ -172,7 +215,9 @@ local ie_type_name = {
     [0x17] = "Group Assignment IE",
     [0x18] = "Load Info IE",
     [0x19] = "Measurement Report IE",
-    [0x3F] = "Escape"
+    [0x1A] = "Timestamp IE (Nonstandard)",
+    [0x3E] = "Escape",
+    [0x3F] = "IE type extension"
 }
 
 
@@ -184,24 +229,28 @@ local ie_type_name_ext3 = {
     [0x1] = "RD Status"
 }
 
--- Common header
-local f_mac_security = ProtoField.uint8("dect_nr.mac_security", "MAC Security", base.HEX, mac_security, 0x30)
-local f_mac_header_type = ProtoField.uint8("dect_nr.mac_header_type", "MAC Header Type", base.HEX, mac_header_type, 0xf)
-local f_mac_ext = ProtoField.uint8("dect_nr.mac_ext", "MAC Ext", base.HEX, mac_ext, 0xc0)
+local ie_type_handler_ext3_payload_length0 = {
+    [0x0] =  ie_handler_padding,                 
+    [0x1] =  ie_handler_configuration_request,
+    [0x2] =  ie_handler_keep_alive,
+    [0x3] =  ie_handler_reserved,
+    [0x10] = ie_handler_security_info,                      --Implemented
+    [0x2] =  ie_handler_reserved,
+    [0x3E] = ie_handler_escape,
+    [0x3F] = ie_handler_reserved
+}
 
--- Misc. header fields
-local f_seq_reset = ProtoField.bool("dect_nr.reset", "Reset", 16, nil, 0x1000)
-local f_sequence = ProtoField.uint16("dect_nr.sequence_number", "Sequence Number", base.DEC, nil, 0xFFF)
-local f_network_address = ProtoField.bytes("dect_nr.network_address", "Network address", base.COLON)
-local f_tx_long_rdid = ProtoField.bytes("dect_nr.tx_long_rdid", "Transmitter RDID", base.COLON)
-local f_rx_long_rdid = ProtoField.bytes("dect_nr.rx_long_rdid", "Received RDID", base.COLON)
+local ie_type_name_ext3_payload_length0 = {
+    [0x0] = "Padding IE",
+    [0x1] = "Configuration Request IE",
+    [0x2] = "Keep Alive IE",
+    [0x3] = "Reserved",    
+    [0x10] = "Security Info IE",
+    [0x11] = "Reserved",
+    [0x1E] = "Escape",
+    [0x1F] = "Reserved"    
+}
 
--- Mux header fields
-local f_mux_ext_field = ProtoField.uint8("dect_nr.sdu.ext_field", "Ext. field", base.HEX, nil, 0xC0)
-local f_mux_ie_type = ProtoField.uint8("dect_nr.sdu.ie_type", "IE Type", base.HEX, ie_type_name, 0x3F)
-local f_mux_sdu_length = ProtoField.uint16("dect_nr.sdu.length", "Length", base.DEC)
-local f_mux_ie_type_ext3 = ProtoField.uint8("dect_nr.sdu.ie_type", "IE Type", base.HEX, ie_type_name_ext3, 0x1F)
-local f_mux_sdu_length_ext3 = ProtoField.uint8("dect_nr.sdu.length", "Length", base.DEC, nil, 0x20)
 
 
 local function call_ie_type_handler(loffset, lbuffer, lpinfo, lmac_mux_header, lmac_ie_type)
@@ -270,11 +319,15 @@ local function dissect_sdu(tree, buffer, offset)
         ie_length = ie_length_range:uint() + 1
         ie_label = ie_type_name[ie_type]
         header_len = 3
-    elseif ext_field == 3 then
+    elseif ext_field == 3 then        
         ie_type = mux_base_header:bitfield(3, 5)
         ie_length_range = mux_base_header
         ie_length = mux_base_header:bitfield(2, 1)
-        ie_label = ie_type_name_ext3[ie_type]
+        if ie_length == 0 then
+          ie_label = ie_type_name_ext3_payload_length0[ie_type]
+        elseif ie_length == 1 then        
+          ie_label = ie_type_name_ext3[ie_type]
+        end
     end
 
     if ie_label == nil then
@@ -311,23 +364,6 @@ local function dissect_sdu(tree, buffer, offset)
 end
 
 
-dect_nr_proto.fields = {
-    f_mac_security, 
-    f_mac_header_type, 
-    f_mac_ext,
-    -- Mux header fields
-    f_mux_ext_field,
-    f_mux_ie_type,
-    f_mux_sdu_length,
-    f_mux_ie_type_ext3,
-    f_mux_sdu_length_ext3,
-    -- Miscellaneous header fields
-    f_seq_reset,
-    f_sequence,
-    f_network_address,
-    f_tx_long_rdid,
-    f_rx_long_rdid
-}
 
 function dect_nr_proto.dissector(buffer,pinfo,tree)
 
