@@ -222,22 +222,29 @@ local ie_type_name = {
 
 
 local ie_type_handler_5bits = {
-    [0x1] = ie_handler_radio_device_status                 --Implemented
+    [0x0] =  ie_handler_padding1,                     
+    [0x1] = ie_handler_radio_device_status,                 --Implemented
+    [0x1E] = ie_handler_escape_ext3_length1,
+    [0x1F] = ie_handler_reserved_ext3_length1
 }
 
 local ie_type_name_ext3 = {
-    [0x1] = "RD Status"
+    [0x0] = "Padding IE",
+    [0x1] = "Radio Device Status IE",
+    [0x1E] = "Escape",
+    [0x1F] = "Reserved"    
 }
 
+-- those all are only 1 byte long
 local ie_type_handler_ext3_payload_length0 = {
-    [0x0] =  ie_handler_padding,                 
+    [0x0] =  ie_handler_padding0,                 
     [0x1] =  ie_handler_configuration_request,
     [0x2] =  ie_handler_keep_alive,
     [0x3] =  ie_handler_reserved,
-    [0x10] = ie_handler_security_info,                      --Implemented
+    [0x10] = ie_handler_security_info,                      
     [0x2] =  ie_handler_reserved,
-    [0x3E] = ie_handler_escape,
-    [0x3F] = ie_handler_reserved
+    [0x3E] = ie_handler_escape_ext3_length0,
+    [0x3F] = ie_handler_reserved_ext3_length0
 }
 
 local ie_type_name_ext3_payload_length0 = {
