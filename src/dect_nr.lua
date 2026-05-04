@@ -13,7 +13,7 @@
 -- CUSTOM_DISSECTORS = DATA_DIR.."LuaDissectors" -- Replace with the directory containing all the scripts
 -- dofile(CUSTOM_DISSECTORS.."\\dect.lua")
 
-dect_nr_proto = Proto("dect_nr","DECT NR Protocol")
+dect_nr_proto = Proto("dect_nr_aalto","DECT NR Protocol")
 
 DECT_UDP_PORT = 8091
 
